@@ -1,0 +1,93 @@
+﻿<?xml version="1.0"?>
+<!-- ====================================================================== 
+     Mar 18, 2007 1:30:20 AM                                                        
+
+     LogBox Build                                                                
+     ====================================================================== -->
+<project name="logbox.newbuild" default="build" basedir="../../">
+
+	<!--Build Properties-->
+	<property name="dir.userlocation"	value="/Users/lmajano" />
+	<property name="dir.exports"		value="${dir.userlocation}/exports" />
+	<property name="dir.build" 			value="${dir.exports}/logbox-distro" />
+	<property name="colddoc.http"		value="http://cf9tools.jfetmac/ColdDoc/logbox.cfm?version=" />
+	
+	<!-- FTP -->
+	<property name="ftp.server"  		value="ftp.coldboxframework.com" />
+	<property name="ftp.remotedir" 		value="/httpdocs/builds" />
+	
+	<!-- Build Labels -->
+	<tstamp prefix="start"/>
+	<property name="build.label" 		value="logbox-buildID-${start.DSTAMP}${start.TSTAMP}"/>
+	
+	<!-- Init -->
+	<target name="init" description="Init">
+		<!-- Version -->
+		<input addproperty="logbox.version" message="LogBox Version" />
+	</target>
+	
+	<!-- FTP Upload of new build -->
+	<target name="ftp.deploy" depends="build">
+       	<input message="Please enter ftp server username:" addproperty="ftp.username" />
+       	<input message="Please enter fpt server password:" addproperty="ftp.password" />
+      	
+		<ftp action="send" server="${ftp.server}" userid="${ftp.username}" password="${ftp.password}" 
+       		remotedir="${ftp.remotedir}" passive="yes" verbose="yes">
+        	<fileset file="${dir.exports}/logbox_${logbox.version}.zip" />
+       	</ftp>		
+	</target>
+	
+	<!--build-->
+	<target name="build" description="Build a new logbox distribution" depends="init">
+      	<delete dir="${dir.build}" />
+		
+		<!-- Copy build ID -->
+		<concat destfile="${dir.build}/${build.label}">Built on ${start.TODAY}</concat>
+		
+		<!-- Copy src to logbox namespace-->	
+      	<copy todir="${dir.build}/logbox/system/logging">
+        	<fileset dir="system/logging" />
+        </copy>
+		<copy todir="${dir.build}/logbox/system/core">
+        	<fileset dir="system/core" />
+        </copy>
+		
+		<!-- Copy src to coldbox namespace -->
+		<copy todir="${dir.build}/coldbox/system/logging">
+        	<fileset dir="system/logging" />
+        </copy>
+		<copy todir="${dir.build}/coldbox/system/core">
+        	<fileset dir="system/core" />
+        </copy>
+		
+		<!-- Refactor logbox namespace -->
+		<echo>Refactoring for coldbox absolute paths</echo>
+		<replace dir="${dir.build}" value="/logbox/system/" summary="yes">
+		  	<include name="**/*.cfc" />
+			<include name="**/*.cfm" />
+			<include name="**/*.xml" />
+			<replacetoken>/coldbox/system/</replacetoken>
+		</replace>
+		<echo>Refactoring for coldbox instantitation and cfc paths</echo>
+		<replace dir="${dir.build}" value="logbox.system." summary="yes">
+		  	<include name="**/*.cfc" />
+			<include name="**/*.cfm" />
+			<include name="**/*.xml" />
+			<replacetoken>coldbox.system.</replacetoken>
+		</replace>
+		
+		<!--Copy text files to root folder-->
+		<copy todir="${dir.build}/">
+			<fileset file="license.txt" />
+			<fileset file="system/logging/readme.txt" />						
+		</copy>
+		
+		<!-- Execute ColdDoc -->
+		<get dest="${dir.build}/colddoc.html" src="${colddoc.http}${logbox.version}" verbose="true"/>
+		<delete file="${dir.build}/colddoc.html" />
+		
+		<!-- Zip Bundle -->
+		<zip destfile="${dir.exports}/logbox_${logbox.version}.zip" basedir="${dir.build}"></zip>
+		
+    </target>
+</project>
